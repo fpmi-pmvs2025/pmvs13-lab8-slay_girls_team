@@ -21,8 +21,9 @@ jobs:
           cache: gradle
 
       - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
+        run: chmod +x wordle_project/gradlew
       - name: Build with Gradle
+        working-directory: ./wordle_project
         run: ./gradlew build
 
   Unit-test:
@@ -39,6 +40,7 @@ jobs:
           cache: gradle
 
       - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
+        run: chmod +x wordle_project/gradlew
       - name: Run unit tests
+        working-directory: ./wordle_project
         run: ./gradlew test
