@@ -2,6 +2,8 @@ package com.example.wordle_project;
 
 import android.graphics.Color;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.LayoutInflater;
@@ -9,12 +11,15 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.GridLayout;
 import android.widget.TextView;
 import android.widget.Toast;
-import android.widget.GridLayout;
+
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+
 import com.example.wordle_project.databinding.ActivityGameBinding;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -25,32 +30,38 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.CountDownLatch;
+
 import okhttp3.Call;
 import okhttp3.Callback;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
-import android.os.Handler;
-import android.os.Looper;
-import java.util.concurrent.CountDownLatch;
 
 public class GameActivity extends AppCompatActivity {
-    private ActivityGameBinding binding;
-    private TextView[][] cells;
-    private int currentRow = 0;
-    private int currentCol = 0;
-    private static final int ROWS = 6;
-    private static final int COLS = 5;
-    private String targetWord;
-    private Map<Character, Button> keyButtons = new HashMap<>();
-    private int currentPlayerId;
-    private String currentPlayerName;
+    public static final int COLS = 5;
+    ActivityGameBinding binding;
+    TextView[][] cells;
+    int currentRow = 0;
+    int currentCol = 0;
+    static final int ROWS = 6;
+    String targetWord;
+    Map<Character, Button> keyButtons = new HashMap<>();
+    int currentPlayerId;
+    String currentPlayerName;
 
-    private static final String WORD_LIST_URL =
-    "https://gist.githubusercontent.com/scholtes/94f3c0303ba6a7768b47583aff36654d/raw/73f890e1680f3fa21577fef3d1f06b8d6c6ae318/wordle-La.txt";
+    static final String WORD_LIST_URL =
+            "https://gist.githubusercontent.com/scholtes/94f3c0303ba6a7768b47583aff36654d/raw/73f890e1680f3fa21577fef3d1f06b8d6c6ae318/wordle-La.txt";
     private final OkHttpClient httpClient = new OkHttpClient();
 
     private Handler handler = new Handler(Looper.getMainLooper());
+
+    public List<String> loadedDictionary = new ArrayList<>();
+    public Runnable dictionaryLoadListener;
+
+    public void setDictionaryLoadListener(Runnable listener) {
+        this.dictionaryLoadListener = listener;
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -115,7 +126,7 @@ public class GameActivity extends AppCompatActivity {
         fetchTargetWord();
     }
 
-    private void fetchTargetWord() {
+    void fetchTargetWord() {
         Request request = new Request.Builder().url(WORD_LIST_URL).build();
         httpClient.newCall(request).enqueue(new Callback() {
             @Override
@@ -130,13 +141,18 @@ public class GameActivity extends AppCompatActivity {
             public void onResponse(Call call, Response response) throws IOException {
                 if (!response.isSuccessful()) { onFailure(call, new IOException("Unexpected code")); return; }
                 String[] words = response.body().string().split("\\r?\\n");
+                loadedDictionary = Arrays.asList(words);
+
+                if (dictionaryLoadListener != null) {
+                    runOnUiThread(dictionaryLoadListener);
+                }
                 String picked = words[new Random().nextInt(words.length)].toUpperCase();
                 runOnUiThread(() -> targetWord = picked);
             }
         });
     }
 
-    private String loadRandomFromRaw() {
+    String loadRandomFromRaw() {
         List<String> list = new ArrayList<>();
         try (InputStream is = getResources().openRawResource(R.raw.wordle);
              BufferedReader reader = new BufferedReader(new InputStreamReader(is))) {
@@ -149,7 +165,7 @@ public class GameActivity extends AppCompatActivity {
         return list.isEmpty() ? "APPLE" : list.get(new Random().nextInt(list.size()));
     }
 
-    private void initGrid() {
+    void initGrid() {
         GridLayout grid = binding.gridWordle;
         grid.removeAllViews(); grid.setRowCount(ROWS); grid.setColumnCount(COLS);
         cells = new TextView[ROWS][COLS];
@@ -169,7 +185,7 @@ public class GameActivity extends AppCompatActivity {
             }
     }
 
-    private void initKeyboard() {
+    void initKeyboard() {
         addKeys(binding.keyboardRow1, new String[]{"Q","W","E","R","T","Y","U","I","O","P"});
         addKeys(binding.keyboardRow2, new String[]{"A","S","D","F","G","H","J","K","L"});
         addKeys(binding.keyboardRow3, new String[]{"↳","Z","X","C","V","B","N","M","←"});
@@ -191,9 +207,9 @@ public class GameActivity extends AppCompatActivity {
         }
     }
 
-    private void onKey(String key) {
+    void onKey(String key) {
         if (currentRow >= ROWS || targetWord == null) return;
-        
+
         if ("←".equals(key)) {
             if (currentCol > 0) {
                 currentCol--;
@@ -213,7 +229,7 @@ public class GameActivity extends AppCompatActivity {
                 }
                 String guess = sb.toString();
                 boolean win = guess.equals(targetWord);
-                
+
                 for (int i = 0; i < COLS; i++) {
                     char g = guess.charAt(i);
                     TextView cell = cells[currentRow][i];
@@ -231,7 +247,7 @@ public class GameActivity extends AppCompatActivity {
                         }
                     }
                 }
-                
+
                 if (win) {
                     recordResult(true, currentRow + 1);
                     showWinDialog();
@@ -250,15 +266,19 @@ public class GameActivity extends AppCompatActivity {
                 cells[currentRow][currentCol].setText(key);
                 currentCol++;
             }
+        } else if (currentRow == ROWS - 1) {
+            recordResult(false, ROWS);
+            targetWord = null; // Явная очистка перед показом диалога
+            showFailDialog();
         }
     }
 
-    private void recordResult(boolean win, int attempts) {
+    void recordResult(boolean win, int attempts) {
         try {
             float coef = win ? (COLS + 1 - attempts) / (float)(COLS + 1) : 0f;
             long ts = System.currentTimeMillis();
             GameResult res = new GameResult(currentPlayerId, win, attempts, coef, ts);
-            
+
             new Thread(() -> {
                 try {
                     AppDatabase db = AppDatabase.getInstance(this);
@@ -274,7 +294,7 @@ public class GameActivity extends AppCompatActivity {
         }
     }
 
-    private void showWinDialog() {
+    void showWinDialog() {
         // Сначала показываем диалог с загрузкой
         AlertDialog loadingDialog = new AlertDialog.Builder(this)
                 .setTitle("Congratulations!")
@@ -298,7 +318,8 @@ public class GameActivity extends AppCompatActivity {
         }).start();
     }
 
-    private void showFailDialog() {
+    void showFailDialog() {
+        targetWord = null;
         // Аналогично для проигрыша
         AlertDialog loadingDialog = new AlertDialog.Builder(this)
                 .setTitle("Game Over")
@@ -321,7 +342,7 @@ public class GameActivity extends AppCompatActivity {
         }).start();
     }
 
-    private String getGameStatsInBackground() {
+    String getGameStatsInBackground() {
         StringBuilder stats = new StringBuilder();
         try {
             AppDatabase db = AppDatabase.getInstance(this);
@@ -405,7 +426,7 @@ public class GameActivity extends AppCompatActivity {
         return stats.toString();
     }
 
-    private void resetGame() {
+    void resetGame() {
         currentRow=0; currentCol=0;
         for (int r=0;r<ROWS;r++) for (int c=0;c<COLS;c++) {
             cells[r][c].setText("");
@@ -423,4 +444,47 @@ public class GameActivity extends AppCompatActivity {
         super.onDestroy();
         binding = null;
     }
+
+
+    // Добавьте в класс GameActivity
+    public boolean checkWord(String guess) {
+        return targetWord != null && targetWord.equals(guess);
+    }
+
+    public int[] calculateLetterColors(String guess) {
+        if (targetWord == null) return new int[0];
+
+        int[] colors = new int[targetWord.length()];
+        for (int i = 0; i < guess.length(); i++) {
+            char c = guess.charAt(i);
+            if (targetWord.charAt(i) == c) {
+                colors[i] = COLOR_CORRECT;
+            } else if (targetWord.contains(String.valueOf(c))) {
+                colors[i] = COLOR_PRESENT;
+            } else {
+                colors[i] = COLOR_WRONG;
+            }
+        }
+        return colors;
+    }
+
+    // Добавьте константы в класс GameActivity
+    public static final int COLOR_CORRECT = 1;
+    public static final int COLOR_PRESENT = 2;
+    public static final int COLOR_WRONG = 3;
+
+
+    public boolean isGameWon() {
+        return targetWord == null && currentRow > 0;
+    }
+
+    boolean isValidWord(String word) {
+        return loadedDictionary.contains(word.toLowerCase());
+    }
+
+    public float calculateScore(boolean win, int attempts) {
+        if (!win) return 0f;
+        return (COLS + 1 - attempts) / (float)(COLS + 1);
+    }
+
 }
