@@ -35,7 +35,6 @@ android {
             )
         }
     }
-
     sourceSets {
         getByName("androidTest") {
             assets.srcDirs("$projectDir/schemas")
@@ -50,12 +49,11 @@ android {
     buildFeatures {
         viewBinding = true
     }
-
-
 }
 
 dependencies {
-    testImplementation (libs.robolectric)
+
+    testImplementation (libs.robolectric.v48)
     implementation(libs.appcompat)
     implementation(libs.material)
     implementation(libs.activity)
@@ -76,6 +74,6 @@ dependencies {
     testImplementation (libs.junit)
     testImplementation (libs.mockito.core)
     testImplementation (libs.robolectric)
-    androidTestImplementation (libs.junit)
-    androidTestImplementation (libs.espresso.core)
+    androidTestImplementation (libs.junit.v115)
+    androidTestImplementation (libs.espresso.core.v351)
 }

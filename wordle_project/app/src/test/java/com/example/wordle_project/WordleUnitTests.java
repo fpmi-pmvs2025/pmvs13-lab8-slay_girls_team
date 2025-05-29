@@ -4,6 +4,7 @@ import static com.example.wordle_project.GameActivity.COLOR_CORRECT;
 import static com.example.wordle_project.GameActivity.COLOR_PRESENT;
 import static com.example.wordle_project.GameActivity.COLOR_WRONG;
 import static org.junit.Assert.*;
+import static org.mockito.Mockito.*;
 
 import android.content.Context;
 import android.view.View;
@@ -20,6 +21,10 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.robolectric.Robolectric;
+import org.robolectric.RobolectricTestRunner;
+import org.robolectric.Shadows;
+import org.robolectric.annotation.Config;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
