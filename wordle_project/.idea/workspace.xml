@@ -1,5 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
+  <component name="AndroidLayouts">
+    <shared>
+      <config />
+    </shared>
+  </component>
   <component name="AutoImportSettings">
     <option name="autoReloadType" value="NONE" />
   </component>
@@ -138,5 +143,21 @@
       <updated>1748501434670</updated>
     </task>
     <servers />
+  </component>
+  <component name="play_dynamic_filters_status">
+    <option name="appIdToCheckInfo">
+      <map>
+        <entry key="com.example.wordle_project">
+          <value>
+            <CheckInfo lastCheckTimestamp="1748516038386" />
+          </value>
+        </entry>
+        <entry key="com.example.wordle_project.test">
+          <value>
+            <CheckInfo lastCheckTimestamp="1748516038387" />
+          </value>
+        </entry>
+      </map>
+    </option>
   </component>
 </project>
